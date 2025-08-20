@@ -2,7 +2,7 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import PatientForm from './components/Patient/PatientForm';
-import DoctorForm from './components/Doctor';
+import DoctorForm from './components/Doctor/DoctorForm';
 import AppointmentForm from './components/AppointmentForm';
 // import PatientsList from './components/PatientsList';
 import HmisHomePage from './components/HmisHomePage';
