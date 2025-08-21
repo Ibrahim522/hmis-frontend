@@ -1,4 +1,5 @@
 import './App.css'
+import axios from 'axios';
 
 import React, { useState, useEffect } from "react";
 
@@ -31,13 +32,7 @@ function PatientRegister() {
     e.preventDefault();
     setMessage("");
     try {
-      const res = await fetch("http://localhost:8081/patients/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error("Registration failed");
-      await res.json();
+      await axios.post("http://localhost:8081/patients/register", form);
       setMessage("Patient Registered successfully!");
       setForm({ name: "", age: "", gender: "", contact: "" });
     } catch (err) {
@@ -65,7 +60,7 @@ function PatientRegister() {
 }
 
 function DoctorRegister() {
-  const [form, setForm] = useState({ name: "", specialization: "", contact: "" });
+  const [form, setForm] = useState({ name: "", specialization: "", gender: "", contact: "" });
   const [message, setMessage] = useState("");
 
   const handleChange = e => setForm({...form, [e.target.name]: e.target.value });
@@ -74,15 +69,9 @@ function DoctorRegister() {
     e.preventDefault();
     setMessage("");
     try {
-      const res = await fetch("http://localhost:8082/doctors/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error("Registration failed");
-      await res.json();
+       await axios.post("http://localhost:8081/doctors/register", form);
       setMessage("Doctor Registered successfully!");
-      setForm({ name: "", specialization: "", contact: "" });
+      setForm({ name: "", specialization: "", gender:"", contact: "" });
     } catch (err) {
       setMessage(err.message);
     }
@@ -94,6 +83,10 @@ function DoctorRegister() {
       <form onSubmit={handleSubmit}>
         <input type="text" name="name" placeholder="Name" value={form.name} onChange={handleChange} required />
         <input type="text" name="specialization" placeholder="Specialization" value={form.specialization} onChange={handleChange} required />
+        <select name="gender" value={form.gender} onChange={handleChange} required>
+          <option value="">Select Gender</option>
+          <option>Male</option><option>Female</option><option>Other</option>
+        </select>
         <input type="contact" name="contact" placeholder="Contact" value={form.contact} onChange={handleChange} required />
        
         <button type="submit">Register</button>
@@ -110,15 +103,13 @@ function AppointmentBook() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:8083/appointments/patients")
-      .then(res => res.json())
-      .then(data => setPatients(data))
-      .catch(() => setPatients([]));
+    axios.get("http://localhost:8081/appointments/patients")
+    .then(res => setPatients(res.data))
+    .catch(() => setPatients([]));
 
-    fetch("http://localhost:8083/appointments/doctors")
-      .then(res => res.json())
-      .then(data => setDoctors(data))
-      .catch(() => setDoctors([]));
+    axios.get("http://localhost:8081/appointments/doctors")
+    .then(res => setDoctors(res.data))
+    .catch(() => setDoctors([]));
   }, []);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
@@ -132,13 +123,7 @@ function AppointmentBook() {
         doctorId: parseInt(form.doctorId),
         appointmentDate: form.appointmentDate,
       };
-      const res = await fetch("http://localhost:8083/appointments/book", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("Appointment booking failed");
-      await res.json();
+       await axios.post("http://localhost:8081/appointments/book", body);
       setMessage("Appointment booked successfully!");
       setForm({ patientId: "", doctorId: "", appointmentDate: "" });
     } catch (err) {
