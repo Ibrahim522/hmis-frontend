@@ -1,3 +1,5 @@
+import './App.css'
+
 import React, { useState, useEffect } from "react";
 
 function App() {
@@ -47,13 +49,13 @@ function PatientRegister() {
     <div>
       <h2>Patient Registration</h2>
       <form onSubmit={handleSubmit}>
-        <input name="name" placeholder="Name" value={form.name} onChange={handleChange} required />
+        <input type="text" name="name" placeholder="Name" value={form.name} onChange={handleChange} required />
         <input type="number" name="age" placeholder="Age" value={form.age} onChange={handleChange} required />
         <select name="gender" value={form.gender} onChange={handleChange} required>
           <option value="">Select Gender</option>
           <option>Male</option><option>Female</option><option>Other</option>
         </select>
-        <input name="contact" placeholder="Contact" value={form.contact} onChange={handleChange} required />
+        <input type="contact" name="contact" placeholder="Contact" value={form.contact} onChange={handleChange} required />
        
         <button type="submit">Register</button>
       </form>
@@ -90,9 +92,9 @@ function DoctorRegister() {
     <div>
       <h2>Doctor Registration</h2>
       <form onSubmit={handleSubmit}>
-        <input name="name" placeholder="Name" value={form.name} onChange={handleChange} required />
-        <input name="specialization" placeholder="Specialization" value={form.specialization} onChange={handleChange} required />
-        <input name="contact" placeholder="Contact" value={form.contact} onChange={handleChange} required />
+        <input type="text" name="name" placeholder="Name" value={form.name} onChange={handleChange} required />
+        <input type="text" name="specialization" placeholder="Specialization" value={form.specialization} onChange={handleChange} required />
+        <input type="contact" name="contact" placeholder="Contact" value={form.contact} onChange={handleChange} required />
        
         <button type="submit">Register</button>
       </form>
