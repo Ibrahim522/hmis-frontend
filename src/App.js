@@ -9,7 +9,7 @@ function App() {
   const [tab, setTab] = useState("patient"); // patient, doctor, appointment
 
   return (
-    <div style={{ maxWidth: 600, margin: "auto" }}>
+    <div style={{ maxWidth: 600, margin: "auto" }} className='hmis-container'>
       <h1>Hospital Management System</h1>
       <nav style={{ marginBottom: 20 }}>
         <button onClick={() => setTab("patient")} disabled={tab === "patient"}>Patient Register</button>

@@ -17,14 +17,25 @@ h2 {
 }
 
 /* Container */
-div {
+/* div {
   background: #fff;
   border-radius: 8px;
   padding: 30px 40px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   margin-bottom: 40px;
-}
+} */
 
+#root{
+  background-color: #fff;
+  padding: 30px 40px;
+}
+.hmis-container{
+background: #fff;
+  border-radius: 8px;
+  padding: 30px 40px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  margin-bottom: 40px;
+}
 /* Navigation buttons */
 nav {
   display: flex;

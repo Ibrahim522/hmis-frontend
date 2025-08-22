@@ -19,10 +19,10 @@ function DoctorRegister() {
 
   const handleSubmit = async e => {
     e.preventDefault();
-    setMessage("");
+
     try {
       await axios.post("http://localhost:8081/doctors/register", form);
-      setMessage("Doctor Registered successfully!");
+      alert("Doctor Registered successfully!");
       setForm({
         firstName: "",
         lastName: "",
@@ -34,8 +34,9 @@ function DoctorRegister() {
         gender: "",
         contact: ""
       });
+          setMessage("");
     } catch (err) {
-      setMessage(err.message);
+       setMessage("Registration failed: " + err.message);
     }
   };
 

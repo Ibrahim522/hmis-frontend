@@ -1,0 +1,51 @@
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.calendar-box {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: center;
+  user-select: none;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.calendar-box div:first-child {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.calendar-box small {
+  color: #666;
+  font-size: 14px;
+}
+
+.calendar-box.available:hover {
+  background-color: #d1e7fd;
+  border-color: #3498db;
+}
+
+.calendar-box.booked {
+  background-color: #f8d7da;
+  border-color: #e74c3c;
+  cursor: not-allowed;
+  color: #a94442;
+}
+
+.calendar-box.selected {
+  background-color: #27ae60;
+  border-color: #219150;
+  color: white;
+}
+
+.appointment-info {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e74c3c;
+}
