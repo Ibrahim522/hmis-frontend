@@ -73,6 +73,7 @@ form {
 }
 
 /* Inputs & Selects */
+input[type="date"],
 input[type="email"],
 input[type="contact"],
 input[type="text"],
@@ -86,6 +87,7 @@ select {
   transition: border-color 0.3s ease;
 }
 
+input[type="date"]:focus,
 input[type="email"]:focus,
 input[type="contact"]:focus,
 input[type="text"]:focus,

@@ -8,12 +8,24 @@ function DoctorRegister() {
     email: "",
     address: "",
     cnic: "",
-    age: "",             
+    dob: "",              // date of birth
     specialization: "",
     gender: "",
     contact: ""
   });
   const [message, setMessage] = useState("");
+
+  // CNIC: digits only, max length 13
+  const handleCnicChange = e => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 13);
+    setForm({ ...form, cnic: value });
+  };
+
+  // Contact: digits only, no limit, no spinner UI
+  const handleContactChange = e => {
+    const value = e.target.value.replace(/\D/g, '');
+    setForm({ ...form, contact: value });
+  };
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -29,14 +41,14 @@ function DoctorRegister() {
         email: "",
         address: "",
         cnic: "",
-        age: "",
+        dob: "",
         specialization: "",
         gender: "",
         contact: ""
       });
-          setMessage("");
+      setMessage("");
     } catch (err) {
-       setMessage("Registration failed: " + err.message);
+      setMessage("Registration failed: " + err.message);
     }
   };
 
@@ -44,14 +56,61 @@ function DoctorRegister() {
     <div>
       <h2>Doctor Registration</h2>
       <form onSubmit={handleSubmit}>
-        <input type="text" name="firstName" placeholder="First Name" value={form.firstName} onChange={handleChange} required />
-        <input type="text" name="lastName" placeholder="Last Name" value={form.lastName} onChange={handleChange} required />
-        <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
-        <input type="text" name="address" placeholder="Address" value={form.address} onChange={handleChange} required />
-        <input type="text" name="cnic" placeholder="CNIC" value={form.cnic} onChange={handleChange} required />
-        <input type="number" name="age" placeholder="Age" value={form.age} onChange={handleChange} required />  {/* Added age input */}
-
-        <select name="specialization" value={form.specialization} onChange={handleChange} required>
+        <input
+          type="text"
+          name="firstName"
+          placeholder="First Name"
+          value={form.firstName}
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="text"
+          name="lastName"
+          placeholder="Last Name"
+          value={form.lastName}
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={form.email}
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="text"
+          name="address"
+          placeholder="Address"
+          value={form.address}
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="text"
+          name="cnic"
+          placeholder="CNIC"
+          value={form.cnic}
+          onChange={handleCnicChange}
+          maxLength={13}
+          required
+        />
+        <input
+          type="date"
+          name="dob"
+          placeholder="Date of Birth"
+          value={form.dob}
+          onChange={handleChange}
+          required
+        />
+        <select
+          name="specialization"
+          value={form.specialization}
+          onChange={handleChange}
+          required
+        >
           <option value="">Select Specialization</option>
           <option>General Practitioner (GP)</option>
           <option>Cardiologist</option>
@@ -79,18 +138,30 @@ function DoctorRegister() {
           <option>Infectious Disease Specialist</option>
           <option>Allergy and Immunology Specialist</option>
         </select>
-
-        <select name="gender" value={form.gender} onChange={handleChange} required>
+        <select
+          name="gender"
+          value={form.gender}
+          onChange={handleChange}
+          required
+        >
           <option value="">Select Gender</option>
           <option>Male</option>
           <option>Female</option>
           <option>Other</option>
         </select>
-        <input type="text" name="contact" placeholder="Contact" value={form.contact} onChange={handleChange} required />
+        <input
+          type="text"
+          name="contact"
+          placeholder="Contact"
+          value={form.contact}
+          onChange={handleContactChange}
+          required
+        />
         <button type="submit">Register</button>
       </form>
       {message && <p>{message}</p>}
     </div>
   );
 }
+
 export default DoctorRegister;

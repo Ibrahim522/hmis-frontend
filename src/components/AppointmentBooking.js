@@ -6,25 +6,19 @@ function AppointmentBooking() {
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
-  const [form, setForm] = useState({
-    patientId: "",
-    doctorId: "",
-    appointmentDate: ""
-  });
+  const [form, setForm] = useState({ patientId: "", doctorId: "", appointmentDate: "" });
   const [message, setMessage] = useState("");
 
-  // Load patients and doctors on mount
   useEffect(() => {
     axios.get("http://localhost:8081/appointments/patients")
       .then(res => setPatients(res.data))
       .catch(() => setPatients([]));
-
     axios.get("http://localhost:8081/appointments/doctors")
       .then(res => setDoctors(res.data))
       .catch(() => setDoctors([]));
   }, []);
 
-  // Load appointments when doctor changes
+  // Fetch appointments when doctor changes
   useEffect(() => {
     if (form.doctorId) {
       axios.get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
@@ -39,15 +33,15 @@ function AppointmentBooking() {
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const selectDate = (dateStr) => {
-    setForm({ ...form, appointmentDate: dateStr });
+  const handleSelectSlot = (dateTimeStr) => {
+    setForm({ ...form, appointmentDate: dateTimeStr });
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
     setMessage("");
     if (!form.appointmentDate) {
-      alert("Please select an appointment date.");
+      alert("Please select an appointment date and time.");
       return;
     }
     try {
@@ -58,20 +52,16 @@ function AppointmentBooking() {
       };
       await axios.post("http://localhost:8081/appointments/book", body);
       alert("Appointment booked successfully!");
-
       // Refresh appointments after booking
-      console.log("Doctor ID:", form.doctorId);
-
       const response = await axios.get(`http://localhost:8081/appointments/doctor/${form.doctorId}`);
       setAppointments(response.data);
-
-      // Clear selection
       setForm({ patientId: "", doctorId: "", appointmentDate: "" });
     } catch (err) {
       setMessage(err.message);
     }
   };
 
+  // Generate 30 days from today, with day name & date
   const generateDays = () => {
     const days = [];
     const today = new Date();
@@ -83,19 +73,32 @@ function AppointmentBooking() {
     return days;
   };
 
-  const checkAppointment = (day) => {
+  // Check if slot is booked
+  const isSlotBooked = (day, hour) => {
     for (const app of appointments) {
       const appDate = new Date(app.appointmentDate);
       if (
         appDate.getFullYear() === day.getFullYear() &&
         appDate.getMonth() === day.getMonth() &&
-        appDate.getDate() === day.getDate()
+        appDate.getDate() === day.getDate() &&
+        appDate.getHours() === hour
       ) {
         return app;
       }
     }
     return null;
   };
+
+  // Format hour to AM/PM string
+  const formatHour = (hour) => {
+    const ampm = hour >= 12 ? "PM" : "AM";
+    let displayHour = hour % 12;
+    if (displayHour === 0) displayHour = 12;
+    return `${displayHour} ${ampm}`;
+  };
+
+  const days = generateDays();
+  const hours = Array.from({ length: 23 }, (_, i) => i + 1); // 1am to 11pm
 
   return (
     <div className="appointment-container">
@@ -120,36 +123,52 @@ function AppointmentBooking() {
         </select>
 
         {form.doctorId && (
-          <div className="calendar-grid">
-            {generateDays().map(day => {
-              const appointment = checkAppointment(day);
-              const dayStr = day.toISOString().slice(0, 10);
-              const isSelected = form.appointmentDate.startsWith(dayStr);
-              return (
-                <div
-                  key={dayStr}
-                  className={`calendar-box ${appointment ? "booked" : "available"} ${isSelected ? "selected" : ""}`}
-                  onClick={() => !appointment && selectDate(dayStr + "T09:00")}
-                  title={
-                    appointment
-                      ? `Booked with Patient ID: ${appointment.patientId}`
-                      : "Available"
-                  }
-                >
+          <div className="calendar-time-grid">
+            {/* Header row: empty top-left cell + days */}
+            <div className="grid-row header-row">
+              <div className="time-cell "></div>
+              {days.map(day => (
+                <div key={day.toISOString()} className="day-cell header-cell">
+                  <div>{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
                   <div>{day.getDate()}</div>
-                  <small>{day.toLocaleDateString(undefined, { weekday: 'short' })}</small>
-                  {appointment && <div className="appointment-info">Booked</div>}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+
+            {/* Time rows */}
+            {hours.map(hour => (
+              <div key={hour} className="grid-row">
+                <div className="time-cell">{formatHour(hour)}</div>
+                {days.map(day => {
+                  const booked = isSlotBooked(day, hour);
+                  const dateTimeStr = `${day.toISOString().slice(0, 10)}T${hour.toString().padStart(2, '0')}:00`;
+                  const isSelected = form.appointmentDate.startsWith(dateTimeStr);
+                  return (
+                    <div
+                      key={day.toISOString() + hour}
+                      className={`time-slot-cell ${booked ? "booked" : "available"} ${isSelected ? "selected" : ""}`}
+                      onClick={() => !booked && handleSelectSlot(dateTimeStr)}
+                      title={booked ? `Booked with Patient ID: ${booked.patientId}` : "Available"}
+                    >
+                      {booked ? (
+                        <>
+                          Booked
+                          <br />
+                          {formatHour(hour)} - {formatHour(hour + 1)}
+                        </>
+                      ) : (
+                        ""
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
 
-        <button type="submit" disabled={!form.appointmentDate}>
-          Book Appointment
-        </button>
+        <button type="submit" disabled={!form.appointmentDate}>Book Appointment</button>
       </form>
-
       {message && <p>{message}</p>}
     </div>
   );
