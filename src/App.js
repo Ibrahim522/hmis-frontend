@@ -9,6 +9,7 @@ function App() {
   const [tab, setTab] = useState("patient"); // patient, doctor, appointment
 
   return (
+    
     <div style={{ maxWidth: 600, margin: "auto" }} className='hmis-container'>
       <h1>Hospital Management System</h1>
       <nav style={{ marginBottom: 20 }}>

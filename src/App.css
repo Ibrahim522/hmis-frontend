@@ -1,10 +1,13 @@
 /* General Styles */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f4f7fa;
+  background: white;
   color: #333;
-  margin: 0;
-  padding: 20px;
+  /* margin: 0;
+  padding: 0; */
+  /* height: 100vh;
+  width: 100vw; */
+  /* padding: 20px; */
 }
 
 h1, h2 {
@@ -16,26 +19,19 @@ h2 {
   margin-bottom: 20px;
 }
 
-/* Container */
-/* div {
+#root {
+  /* background-color: #fff; */
+  padding: 30px 40px;
+}
+
+.hmis-container {
   background: #fff;
   border-radius: 8px;
   padding: 30px 40px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   margin-bottom: 40px;
-} */
+}
 
-#root{
-  background-color: #fff;
-  padding: 30px 40px;
-}
-.hmis-container{
-background: #fff;
-  border-radius: 8px;
-  padding: 30px 40px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  margin-bottom: 40px;
-}
 /* Navigation buttons */
 nav {
   display: flex;
@@ -101,19 +97,24 @@ select:focus {
 
 /* Buttons */
 button[type="submit"] {
-  background-color: #27ae60;
+  background-color: #2980b9;
   border: none;
   color: white;
   padding: 12px 20px;
   font-size: 18px;
   border-radius: 6px;
+  width: 100%;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  font-weight: 600;
+  /* font-weight: 600;   */
 }
-
+.register-button{
+  
+  width: 30%;
+  
+}
 button[type="submit"]:hover {
-  background-color: #219150;
+  background-color: #3498db;
 }
 
 /* Message */
@@ -128,6 +129,74 @@ p.error {
   color: #e74c3c;
 }
 
+/* Form group for stacking input and error vertically */
+.form-stack  {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* flex-direction: column; */
+  gap: 15px;
+  margin-bottom: 15px;
+  min-width: 100%;
+}
+.form-group{
+  display: flex;
+  flex-direction: column;
+}
+.form-container{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.register-button{
+  /* width: 100%; */
+  /* background-color: #2980b9; */
+}
+
+/* Error input style */
+input.error,
+select.error {
+  border-color: #e74c3c !important;
+  /* background-color: #ffe6e6; */
+  color: #e74c3c;
+}
+
+/* Error message below input */
+.error-message {
+  color: #e74c3c;
+  font-size: 0.9em;
+  margin-top: 5px; /* spacing below input */
+  font-weight: 600;
+}
+
+.sendOtpButton{
+  position: absolute;
+  right: 0;
+  font-size: 13px;
+  top: 0;
+  height: 100%;
+  padding: 0 5px;
+  background-color: #d4d6d7;
+  color: rgb(79, 76, 76);
+  border: none;
+  border-top-right-radius: 4px;
+  overflow: hidden;
+  border-bottom-right-radius: 4px;
+  cursor: pointer;
+  }
+  .verifyButtonContainer{
+     align-items: center;
+  }
+  .verifyOtpButton{
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 8px 20px;
+    background-color: #3498db;
+    color: white;
+    max-width: 100px;
+    border: none;
+    margin-top: 15px;
+  }
 /* Responsive */
 @media (max-width: 640px) {
   div {

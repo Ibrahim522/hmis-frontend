@@ -13,12 +13,12 @@ function AppointmentBooking() {
     axios.get("http://localhost:8081/appointments/patients")
       .then(res => setPatients(res.data))
       .catch(() => setPatients([]));
+
     axios.get("http://localhost:8081/appointments/doctors")
       .then(res => setDoctors(res.data))
       .catch(() => setDoctors([]));
   }, []);
 
-  // Fetch appointments when doctor changes
   useEffect(() => {
     if (form.doctorId) {
       axios.get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
@@ -52,7 +52,7 @@ function AppointmentBooking() {
       };
       await axios.post("http://localhost:8081/appointments/book", body);
       alert("Appointment booked successfully!");
-      // Refresh appointments after booking
+
       const response = await axios.get(`http://localhost:8081/appointments/doctor/${form.doctorId}`);
       setAppointments(response.data);
       setForm({ patientId: "", doctorId: "", appointmentDate: "" });
@@ -61,7 +61,7 @@ function AppointmentBooking() {
     }
   };
 
-  // Generate 30 days from today, with day name & date
+  // Generate next 30 days starting today
   const generateDays = () => {
     const days = [];
     const today = new Date();
@@ -73,23 +73,18 @@ function AppointmentBooking() {
     return days;
   };
 
-  // Check if slot is booked
   const isSlotBooked = (day, hour) => {
-    for (const app of appointments) {
+    return appointments.find(app => {
       const appDate = new Date(app.appointmentDate);
-      if (
+      return (
         appDate.getFullYear() === day.getFullYear() &&
         appDate.getMonth() === day.getMonth() &&
         appDate.getDate() === day.getDate() &&
         appDate.getHours() === hour
-      ) {
-        return app;
-      }
-    }
-    return null;
+      );
+    });
   };
 
-  // Format hour to AM/PM string
   const formatHour = (hour) => {
     const ampm = hour >= 12 ? "PM" : "AM";
     let displayHour = hour % 12;
@@ -97,13 +92,39 @@ function AppointmentBooking() {
     return `${displayHour} ${ampm}`;
   };
 
+  // Check if weekend
+  const isWeekend = (day) => {
+    const dayOfWeek = day.getDay(); // Sunday=0, Saturday=6
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  };
+
   const days = generateDays();
-  const hours = Array.from({ length: 23 }, (_, i) => i + 1); // 1am to 11pm
+  // Hours from 13 (1 PM) to 23 (11 PM)
+  const hours = Array.from({ length: 11 }, (_, i) => i + 13);
+
+  // Render month labels for calendar header
+  const renderMonthLabels = () => {
+    const labels = [];
+    let lastMonth = null;
+
+    days.forEach((day, index) => {
+      const currentMonth = `${day.toLocaleString('default', { month: 'long' })} ${day.getFullYear()}`;
+      if (currentMonth !== lastMonth) {
+        labels.push({ index, label: currentMonth });
+        lastMonth = currentMonth;
+      }
+    });
+
+    return labels;
+  };
+
+  const monthLabels = renderMonthLabels();
 
   return (
     <div className="appointment-container">
       <h2>Book Appointment</h2>
       <form onSubmit={handleSubmit}>
+        <div className='form-stack'>
         <select name="patientId" value={form.patientId} onChange={handleChange} required>
           <option value="">Select Patient</option>
           {patients.map(p => (
@@ -121,28 +142,58 @@ function AppointmentBooking() {
             </option>
           ))}
         </select>
-
+          </div>
         {form.doctorId && (
           <div className="calendar-time-grid">
-            {/* Header row: empty top-left cell + days */}
+
+            {/* Month Labels */}
+            <div className="month-labels">
+              {monthLabels.map((label, idx) => (
+                <div
+                  key={idx}
+                  className="month-header"
+                  style={{ gridColumnStart: label.index + 2 }}
+                >
+                  {label.label}
+                </div>
+              ))}
+            </div>
+
+            {/* Days Header */}
             <div className="grid-row header-row">
-              <div className="time-cell "></div>
+              <div className="time-cell"></div>
               {days.map(day => (
-                <div key={day.toISOString()} className="day-cell header-cell">
+                <div
+                  key={day.toISOString()}
+                  className={`day-cell header-cell ${isWeekend(day) ? 'weekend' : ''}`}
+                >
                   <div>{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
                   <div>{day.getDate()}</div>
                 </div>
               ))}
             </div>
 
-            {/* Time rows */}
+            {/* Time slots */}
             {hours.map(hour => (
               <div key={hour} className="grid-row">
                 <div className="time-cell">{formatHour(hour)}</div>
                 {days.map(day => {
-                  const booked = isSlotBooked(day, hour);
                   const dateTimeStr = `${day.toISOString().slice(0, 10)}T${hour.toString().padStart(2, '0')}:00`;
                   const isSelected = form.appointmentDate.startsWith(dateTimeStr);
+
+                  if (isWeekend(day)) {
+                    return (
+                      <div
+                        key={day.toISOString() + hour}
+                        className="time-slot-cell weekend"
+                        title="Weekend - not available"
+                      >
+                        -
+                      </div>
+                    );
+                  }
+
+                  const booked = isSlotBooked(day, hour);
                   return (
                     <div
                       key={day.toISOString() + hour}
@@ -156,9 +207,7 @@ function AppointmentBooking() {
                           <br />
                           {formatHour(hour)} - {formatHour(hour + 1)}
                         </>
-                      ) : (
-                        ""
-                      )}
+                      ) : ""}
                     </div>
                   );
                 })}

@@ -20,15 +20,18 @@ function PatientRegister() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
-  const [showOtpOnly, setShowOtpOnly] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
 
-
+  // Validation regexes
   const isLettersOnly = (str) => /^[a-zA-Z\s]*$/.test(str);
   const isValidEmail = (email) =>
     /^[a-zA-Z][\w.-]*@[a-zA-Z]+\.[a-zA-Z]{2,}$/.test(email);
   const isValidContact = (contact) => /^\d*$/.test(contact);
   const isValidCnic = (cnic) => /^\d{5}-\d{7}-\d{1}$/.test(cnic);
 
+  // Format CNIC with dashes
   const formatCnic = (value) => {
     const digits = value.replace(/\D/g, "").slice(0, 13);
     const part1 = digits.slice(0, 5);
@@ -37,6 +40,7 @@ function PatientRegister() {
     return [part1, part2, part3].filter(Boolean).join("-");
   };
 
+  // Handle input change for most fields
   const handleChange = (e) => {
     const { name, value } = e.target;
     let error = "";
@@ -47,11 +51,13 @@ function PatientRegister() {
         if (value && !isLettersOnly(value)) error = "Only letters are allowed";
         break;
       case "email":
+        if (otpSent) {
+          setOtpSent(false);
+          setOtpVerified(false);
+          setOtp("");
+          setOtpError("");
+        }
         if (value && !isValidEmail(value)) error = "Invalid email format";
-        // Reset OTP status if email changes
-        setOtpSent(false);
-        setOtpVerified(false);
-        setOtp("");
         break;
       default:
         error = "";
@@ -61,6 +67,7 @@ function PatientRegister() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // CNIC input handler
   const handleCnicChange = (e) => {
     let input = e.target.value;
     const cleanInput = input.replace(/[^0-9]/g, "");
@@ -87,6 +94,7 @@ function PatientRegister() {
     }
   };
 
+  // Contact input handler
   const handleContactChange = (e) => {
     const value = e.target.value;
     const error = isValidContact(value)
@@ -96,44 +104,66 @@ function PatientRegister() {
     setForm((prev) => ({ ...prev, contact: value }));
   };
 
-  // --- OTP functions ---
-  const sendOtp = async () => {
-    if (!form.email || !isValidEmail(form.email)) {
-      alert("Please enter a valid email before sending OTP.");
+  // Send OTP to email
+  const handleSendOtp = async () => {
+    if (!form.email) {
+      setErrors((prev) => ({ ...prev, email: "Email is required to send OTP" }));
       return;
     }
+    if (!isValidEmail(form.email)) {
+      setErrors((prev) => ({ ...prev, email: "Invalid email format" }));
+      return;
+    }
+
+    setOtpSending(true);
+    setOtpError("");
     try {
-      await axios.post("http://localhost:8081/otp/send-otp", { email: form.email });
+      await axios.post("http://localhost:8081/otp/send", { email: form.email });
       setOtpSent(true);
-      setShowOtpOnly(true);
-      alert("OTP sent to your email.");
+      setMessage("OTP sent to your email. Please check your inbox.");
     } catch (err) {
-      alert("Failed to send OTP. Try again.");
+      setOtpError("Failed to send OTP. Try again.");
+    } finally {
+      setOtpSending(false);
     }
   };
 
-  const verifyOtp = async () => {
+  // Verify OTP
+  const handleVerifyOtp = async () => {
     if (!otp) {
-      alert("Enter OTP.");
+      setOtpError("Please enter the OTP");
       return;
     }
+
+    setOtpVerifying(true);
+    setOtpError("");
     try {
-      await axios.post("http://localhost:8081/otp/verify-otp", {
+      const response = await axios.post("http://localhost:8081/otp/verify", {
         email: form.email,
         otp,
       });
-      setOtpVerified(true);
-      setShowOtpOnly(false);
-      alert("Email verified successfully!");
+      if (response.data.success) {
+        setOtpVerified(true);
+        setMessage("OTP verified successfully!");
+        setOtpError("");
+      } else {
+        setOtpError(response.data.message || "Invalid OTP");
+      }
     } catch (err) {
-      alert("You entered wrong OTP.");
+      setOtpError("OTP verification failed. Try again.");
+    } finally {
+      setOtpVerifying(false);
     }
   };
 
+  // Submit registration only if OTP verified
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    
+    if (!otpVerified) {
+      alert("Please verify your email with OTP before registering.");
+      return;
+    }
 
     const newErrors = {};
 
@@ -147,10 +177,6 @@ function PatientRegister() {
 
     if (!form.email) newErrors.email = "Email is required";
     else if (!isValidEmail(form.email)) newErrors.email = "Invalid email format";
-    else if(!otpVerified){
-      alert("Please verify your email first.");
-      return;}  
-    
 
     if (!form.address) newErrors.address = "Address is required";
 
@@ -187,9 +213,10 @@ function PatientRegister() {
       });
       setErrors({});
       setMessage("");
+      setOtp("");
       setOtpSent(false);
       setOtpVerified(false);
-      setOtp("");
+      setOtpError("");
     } catch (err) {
       setMessage("Registration failed: " + err.message);
     }
@@ -199,83 +226,11 @@ function PatientRegister() {
     <div>
       <h2>Patient Registration</h2>
       <form onSubmit={handleSubmit} noValidate className="form-container">
-        {showOtpOnly ? (
-    <>
-      <div className="form-group verifyButtonContainer" style={{ marginTop: "8px" }}>
-          
-        <input
-          type="text"
-          placeholder="Enter your OTP here"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          maxLength={6}
-          style={{ width: "200px", marginRight: "8px" }}
-        />
-        <button type="button" onClick={verifyOtp} className="verifyOtpButton">
-          Verify
-        </button>
-      </div>
-    </>
-  ) : (
-    <>
         <div className="form-stack">
+          {/* First Name, Last Name, Address */}
           {[
             { name: "firstName", placeholder: "First Name", type: "text" },
             { name: "lastName", placeholder: "Last Name", type: "text" },
-          ].map((field) => (
-            <div className="form-group" key={field.name}>
-              <input
-                type={field.type}
-                name={field.name}
-                placeholder={field.placeholder}
-                value={form[field.name]}
-                onChange={handleChange}
-                required
-                className={errors[field.name] ? "error" : ""}
-              />
-              {errors[field.name] && (
-                <div className="error-message">{errors[field.name]}</div>
-              )}
-            </div>
-          ))}
-
-          <div className="form-group" >
-            <div className="form-group" style={{ position: "relative" }}>
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              className={errors.email ? "error" : ""}
-            />
-            
-
-            {/* Send OTP button */}
-            {!otpSent && (
-              <button
-                type="button"
-                onClick={sendOtp}
-                className="sendOtpButton"
-                
-              >
-                Send OTP
-              </button>
-            )} 
-            {otpVerified && (
-            <p style={{ position: "absolute", right: 10, top: -3 }}
-              >
-            ✅
-            </p>
-          )}
-            </div>
-            {errors.email && (
-              <div className="error-message">{errors.email}</div>
-            )}
-          </div>
-
-          {[
             { name: "address", placeholder: "Address", type: "text" },
           ].map((field) => (
             <div className="form-group" key={field.name}>
@@ -294,6 +249,54 @@ function PatientRegister() {
             </div>
           ))}
 
+          {/* Email input with Send OTP button */}
+          <div className="form-group" style={{ display: "flex", alignItems: "center" }}>
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={form.email}
+              onChange={handleChange}
+              required
+              className={errors.email ? "error" : ""}
+              style={{ flexGrow: 1, marginRight: "8px" }}
+              disabled={otpVerified} // disable if verified
+            />
+            <button
+              type="button"
+              onClick={handleSendOtp}
+              disabled={otpSending || otpVerified}
+            >
+              {otpSending ? "Sending..." : otpVerified ? "Verified" : "Send OTP"}
+            </button>
+          </div>
+          {errors.email && <div className="error-message">{errors.email}</div>}
+
+          {/* OTP input & verify button - shown only after OTP sent */}
+          {otpSent && !otpVerified && (
+            <div className="form-group" style={{ display: "flex", alignItems: "center", marginTop: "8px" }}>
+              <input
+                type="text"
+                name="otp"
+                placeholder="Enter OTP"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                maxLength={6}
+                style={{ flexGrow: 1, marginRight: "8px" }}
+              />
+              <button
+                type="button"
+                onClick={handleVerifyOtp}
+                disabled={otpVerifying}
+              >
+                {otpVerifying ? "Verifying..." : "Verify OTP"}
+              </button>
+            </div>
+          )}
+          {otpError && <div className="error-message">{otpError}</div>}
+          {message && <div className="message">{message}</div>}
+
+          {/* CNIC */}
           <div className="form-group">
             <input
               type="text"
@@ -308,11 +311,11 @@ function PatientRegister() {
             {errors.cnic && <div className="error-message">{errors.cnic}</div>}
           </div>
 
+          {/* DOB */}
           <div className="form-group">
             <input
               type="date"
               name="dob"
-              placeholder="Date of Birth"
               value={form.dob}
               onChange={handleChange}
               required
@@ -321,6 +324,7 @@ function PatientRegister() {
             {errors.dob && <div className="error-message">{errors.dob}</div>}
           </div>
 
+          {/* Gender */}
           <div className="form-group">
             <select
               name="gender"
@@ -334,11 +338,10 @@ function PatientRegister() {
               <option>Female</option>
               <option>Other</option>
             </select>
-            {errors.gender && (
-              <div className="error-message">{errors.gender}</div>
-            )}
+            {errors.gender && <div className="error-message">{errors.gender}</div>}
           </div>
 
+          {/* Contact */}
           <div className="form-group">
             <input
               type="text"
@@ -355,15 +358,13 @@ function PatientRegister() {
           </div>
         </div>
 
-        <div className="register-button" style={{ marginTop: "15px" }}>
-          <button type="submit" >
+        <div className="register-button" style={{ marginTop: "20px" }}>
+          <button type="submit" disabled={!otpVerified}>
             Register
-          </button>          
+          </button>
         </div>
-         </>
-  )}
       </form>
-    
+
       {message && <p>{message}</p>}
     </div>
   );

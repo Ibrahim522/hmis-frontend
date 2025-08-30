@@ -23,7 +23,7 @@ form select, form button {
 }
 
 .header-row {
-  background-color: #f0f0f0;
+  /* background-color: #f0f0f0; */
   font-weight: bold;
 }
 
@@ -40,6 +40,7 @@ form select, form button {
 .header-cell {
   border-bottom: 1px solid #ddd;
   border-right: 1px solid #ddd;
+  background-color: #f0f0f0;
   width: 100px;
   min-width: 100px;
   text-align: center;
@@ -77,4 +78,19 @@ form select, form button {
 .time-slot-cell.selected {
   background-color: #3f51b5;
   color: white;
+}
+.month-labels {
+  display: grid;
+  grid-template-columns: 60px repeat(30, 100px);
+  font-weight: bold;
+  text-align: center;
+}
+
+.month-header {
+  grid-column: span 1;
+  padding: 6px 0;
+  background-color: #d0e8ff;
+  border-bottom: 1px solid #ccc;
+  font-size: 14px;
+  font-weight: bold;
 }
