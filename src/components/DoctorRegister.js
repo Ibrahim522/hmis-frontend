@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useState } from "react";
 
-function DoctorRegister() {
+function DoctorRegister({organization}) {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -143,10 +143,10 @@ function DoctorRegister() {
 
     if (!form.email) newErrors.email = "Email is required";
     else if (!isValidEmail(form.email)) newErrors.email = "Invalid email format";
-    else if (!otpVerified) {
-      alert("Please verify your email before registering.");
-      return;
-    }
+    // else if (!otpVerified) {
+    //   alert("Please verify your email before registering.");
+    //   return;
+    // }
 
     if (!form.address) newErrors.address = "Address is required";
 
@@ -198,6 +198,7 @@ function DoctorRegister() {
   return (
     <div>
       <h2>Doctor Registration</h2>
+       <p>{organization}</p>
       <form onSubmit={handleSubmit} noValidate className="form-container" >
             {showOtpOnly ? (
     <>

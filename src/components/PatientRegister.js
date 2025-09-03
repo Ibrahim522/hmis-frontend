@@ -1,7 +1,7 @@
 import axios from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ✅ make sure useEffect is imported
 
-function PatientRegister() {
+function PatientRegister({ organization }) {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -22,7 +22,36 @@ function PatientRegister() {
   const [otpVerified, setOtpVerified] = useState(false);
   const [showOtpOnly, setShowOtpOnly] = useState(false);
 
+  // ✅ Lifecycle Log: Component Mount and Unmount
+  useEffect(() => {
+    console.log("component mounted");
 
+    return () => {
+      console.log("component unmounted");
+    };
+  }, []);
+
+  // Lifecycle Log: Every render (like componentDidUpdate for any state/prop change)
+  useEffect(() => {
+    console.log("component re-rendered due to state or prop change");
+  });
+
+  // Lifecycle Log: Form state changes
+  useEffect(() => {
+    console.log("component updated Form data updated:", form);
+  }, [form]);
+
+  // Lifecycle Log: OTP-related states change
+  useEffect(() => {
+    console.log("OTP state changed:", { otpSent, otp, otpVerified });
+  }, [otpSent, otp, otpVerified]);
+
+  // Lifecycle Log: Props change (organization)
+  useEffect(() => {
+    console.log("Organization prop changed:", organization);
+  }, [organization]);
+
+  // --- Validation helpers ---
   const isLettersOnly = (str) => /^[a-zA-Z\s]*$/.test(str);
   const isValidEmail = (email) =>
     /^[a-zA-Z][\w.-]*@[a-zA-Z]+\.[a-zA-Z]{2,}$/.test(email);
@@ -103,7 +132,9 @@ function PatientRegister() {
       return;
     }
     try {
-      await axios.post("http://localhost:8081/otp/send-otp", { email: form.email });
+      await axios.post("http://localhost:8081/otp/send-otp", {
+        email: form.email,
+      });
       setOtpSent(true);
       setShowOtpOnly(true);
       alert("OTP sent to your email.");
@@ -133,8 +164,6 @@ function PatientRegister() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    
-
     const newErrors = {};
 
     if (!form.firstName) newErrors.firstName = "First Name is required";
@@ -146,11 +175,12 @@ function PatientRegister() {
       newErrors.lastName = "Only letters are allowed";
 
     if (!form.email) newErrors.email = "Email is required";
-    else if (!isValidEmail(form.email)) newErrors.email = "Invalid email format";
-    else if(!otpVerified){
+    else if (!isValidEmail(form.email))
+      newErrors.email = "Invalid email format";
+    else if (!otpVerified) {
       alert("Please verify your email first.");
-      return;}  
-    
+      return;
+    }
 
     if (!form.address) newErrors.address = "Address is required";
 
@@ -198,172 +228,171 @@ function PatientRegister() {
   return (
     <div>
       <h2>Patient Registration</h2>
+      <p>{organization}</p>
       <form onSubmit={handleSubmit} noValidate className="form-container">
         {showOtpOnly ? (
-    <>
-      <div className="form-group verifyButtonContainer" style={{ marginTop: "8px" }}>
-          
-        <input
-          type="text"
-          placeholder="Enter your OTP here"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          maxLength={6}
-          style={{ width: "200px", marginRight: "8px" }}
-        />
-        <button type="button" onClick={verifyOtp} className="verifyOtpButton">
-          Verify
-        </button>
-      </div>
-    </>
-  ) : (
-    <>
-        <div className="form-stack">
-          {[
-            { name: "firstName", placeholder: "First Name", type: "text" },
-            { name: "lastName", placeholder: "Last Name", type: "text" },
-          ].map((field) => (
-            <div className="form-group" key={field.name}>
+          <>
+            <div
+              className="form-group verifyButtonContainer"
+              style={{ marginTop: "8px" }}
+            >
               <input
-                type={field.type}
-                name={field.name}
-                placeholder={field.placeholder}
-                value={form[field.name]}
-                onChange={handleChange}
-                required
-                className={errors[field.name] ? "error" : ""}
+                type="text"
+                placeholder="Enter your OTP here"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                maxLength={6}
+                style={{ width: "200px", marginRight: "8px" }}
               />
-              {errors[field.name] && (
-                <div className="error-message">{errors[field.name]}</div>
-              )}
-            </div>
-          ))}
-
-          <div className="form-group" >
-            <div className="form-group" style={{ position: "relative" }}>
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              className={errors.email ? "error" : ""}
-            />
-            
-
-            {/* Send OTP button */}
-            {!otpSent && (
               <button
                 type="button"
-                onClick={sendOtp}
-                className="sendOtpButton"
-                
+                onClick={verifyOtp}
+                className="verifyOtpButton"
               >
-                Send OTP
+                Verify
               </button>
-            )} 
-            {otpVerified && (
-            <p style={{ position: "absolute", right: 10, top: -3 }}
-              >
-            ✅
-            </p>
-          )}
             </div>
-            {errors.email && (
-              <div className="error-message">{errors.email}</div>
-            )}
-          </div>
+          </>
+        ) : (
+          <>
+            <div className="form-stack">
+              {[{ name: "firstName", placeholder: "First Name", type: "text" }, { name: "lastName", placeholder: "Last Name", type: "text" }].map((field) => (
+                <div className="form-group" key={field.name}>
+                  <input
+                    type={field.type}
+                    name={field.name}
+                    placeholder={field.placeholder}
+                    value={form[field.name]}
+                    onChange={handleChange}
+                    required
+                    className={errors[field.name] ? "error" : ""}
+                  />
+                  {errors[field.name] && (
+                    <div className="error-message">{errors[field.name]}</div>
+                  )}
+                </div>
+              ))}
 
-          {[
-            { name: "address", placeholder: "Address", type: "text" },
-          ].map((field) => (
-            <div className="form-group" key={field.name}>
-              <input
-                type={field.type}
-                name={field.name}
-                placeholder={field.placeholder}
-                value={form[field.name]}
-                onChange={handleChange}
-                required
-                className={errors[field.name] ? "error" : ""}
-              />
-              {errors[field.name] && (
-                <div className="error-message">{errors[field.name]}</div>
-              )}
+              <div className="form-group">
+                <div className="form-group" style={{ position: "relative" }}>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    value={form.email}
+                    onChange={handleChange}
+                    required
+                    className={errors.email ? "error" : ""}
+                  />
+                  {!otpSent && (
+                    <button
+                      type="button"
+                      onClick={sendOtp}
+                      className="sendOtpButton"
+                    >
+                      Send OTP
+                    </button>
+                  )}
+                  {otpVerified && (
+                    <p
+                      style={{ position: "absolute", right: 10, top: -3 }}
+                    >
+                      ✅
+                    </p>
+                  )}
+                </div>
+                {errors.email && (
+                  <div className="error-message">{errors.email}</div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <input
+                  type="text"
+                  name="address"
+                  placeholder="Address"
+                  value={form.address}
+                  onChange={handleChange}
+                  required
+                  className={errors.address ? "error" : ""}
+                />
+                {errors.address && (
+                  <div className="error-message">{errors.address}</div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <input
+                  type="text"
+                  name="cnic"
+                  placeholder="CNIC"
+                  value={form.cnic}
+                  onChange={handleCnicChange}
+                  maxLength={15}
+                  required
+                  className={errors.cnic ? "error" : ""}
+                />
+                {errors.cnic && (
+                  <div className="error-message">{errors.cnic}</div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <input
+                  type="date"
+                  name="dob"
+                  placeholder="Date of Birth"
+                  value={form.dob}
+                  onChange={handleChange}
+                  required
+                  className={errors.dob ? "error" : ""}
+                />
+                {errors.dob && (
+                  <div className="error-message">{errors.dob}</div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <select
+                  name="gender"
+                  value={form.gender}
+                  onChange={handleChange}
+                  required
+                  className={errors.gender ? "error" : ""}
+                >
+                  <option value="">Select Gender</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                  <option>Other</option>
+                </select>
+                {errors.gender && (
+                  <div className="error-message">{errors.gender}</div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <input
+                  type="text"
+                  name="contact"
+                  placeholder="Contact Number"
+                  value={form.contact}
+                  onChange={handleContactChange}
+                  required
+                  className={errors.contact ? "error" : ""}
+                />
+                {errors.contact && (
+                  <div className="error-message">{errors.contact}</div>
+                )}
+              </div>
             </div>
-          ))}
 
-          <div className="form-group">
-            <input
-              type="text"
-              name="cnic"
-              placeholder="CNIC"
-              value={form.cnic}
-              onChange={handleCnicChange}
-              maxLength={15}
-              required
-              className={errors.cnic ? "error" : ""}
-            />
-            {errors.cnic && <div className="error-message">{errors.cnic}</div>}
-          </div>
-
-          <div className="form-group">
-            <input
-              type="date"
-              name="dob"
-              placeholder="Date of Birth"
-              value={form.dob}
-              onChange={handleChange}
-              required
-              className={errors.dob ? "error" : ""}
-            />
-            {errors.dob && <div className="error-message">{errors.dob}</div>}
-          </div>
-
-          <div className="form-group">
-            <select
-              name="gender"
-              value={form.gender}
-              onChange={handleChange}
-              required
-              className={errors.gender ? "error" : ""}
-            >
-              <option value="">Select Gender</option>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Other</option>
-            </select>
-            {errors.gender && (
-              <div className="error-message">{errors.gender}</div>
-            )}
-          </div>
-
-          <div className="form-group">
-            <input
-              type="text"
-              name="contact"
-              placeholder="Contact Number"
-              value={form.contact}
-              onChange={handleContactChange}
-              required
-              className={errors.contact ? "error" : ""}
-            />
-            {errors.contact && (
-              <div className="error-message">{errors.contact}</div>
-            )}
-          </div>
-        </div>
-
-        <div className="register-button" style={{ marginTop: "15px" }}>
-          <button type="submit" >
-            Register
-          </button>          
-        </div>
-         </>
-  )}
+            <div className="register-button" style={{ marginTop: "15px" }}>
+              <button type="submit">Register</button>
+            </div>
+          </>
+        )}
       </form>
-    
+
       {message && <p>{message}</p>}
     </div>
   );
