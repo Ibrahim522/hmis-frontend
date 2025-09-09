@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useState, useEffect } from "react"; // ✅ make sure useEffect is imported
+import { useState, useEffect } from "react"; 
 
 function PatientRegister({ organization }) {
   const [form, setForm] = useState({
@@ -22,7 +22,7 @@ function PatientRegister({ organization }) {
   const [otpVerified, setOtpVerified] = useState(false);
   const [showOtpOnly, setShowOtpOnly] = useState(false);
 
-  // ✅ Lifecycle Log: Component Mount and Unmount
+  //  Lifecycle Log: Component Mount and Unmount
   useEffect(() => {
     console.log("component mounted");
 

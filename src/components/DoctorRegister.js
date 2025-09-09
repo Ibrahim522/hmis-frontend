@@ -143,10 +143,10 @@ function DoctorRegister({organization}) {
 
     if (!form.email) newErrors.email = "Email is required";
     else if (!isValidEmail(form.email)) newErrors.email = "Invalid email format";
-    // else if (!otpVerified) {
-    //   alert("Please verify your email before registering.");
-    //   return;
-    // }
+    else if (!otpVerified) {
+      alert("Please verify your email before registering.");
+      return;
+    }
 
     if (!form.address) newErrors.address = "Address is required";
 

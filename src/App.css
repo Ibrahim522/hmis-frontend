@@ -208,6 +208,13 @@ select.error {
     flex-direction: column;
     align-items: center;
   }
+  .cancel-btn{
+    background: none;
+    border: none;
+    margin-left: 5px;
+    cursor: pointer;
+  }
+
 /* Responsive */
 @media (max-width: 640px) {
   div {

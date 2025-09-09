@@ -1,17 +1,25 @@
-import axios from 'axios';
+import axios from "axios";
 import { useState, useEffect } from "react";
-import { Stepper, Step, StepLabel, Button } from '@mui/material';
-import './AppointmentBooking.css'; // your existing styling
+import { Stepper, Step, StepLabel, Button } from "@mui/material";
+import "./AppointmentBooking.css";
+
+import PaymentForm from "./PaymentForm";
+import {
+  Elements,
+} from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+
+const stripePromise = loadStripe("pk_test_51S2syLCjoVPMv76imBAFsz0OdoFOnVbP2JUSV09aW1wmV3LFTJk2KIx2dgcyS6Xf4lbTMIrhwA4JMxb27Hso3InF00ODFhBAWL");
 
 const steps = [
   "Select Patient & Doctor",
   "Verify Details",
   "Select Slot",
   "Payment",
-  "Checkout"
+  "Checkout",
 ];
 
-function AppointmentBooking({organization}) {
+function AppointmentBooking({ organization}) {
   const [activeStep, setActiveStep] = useState(0);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -21,62 +29,78 @@ function AppointmentBooking({organization}) {
     doctorId: "",
     appointmentDate: "",
     notificationVerified: false,
-    paymentInfo: ""
+    paymentInfo: "",
   });
   const [message, setMessage] = useState("");
 
-  // Load patients and doctors
-  useEffect(() => {
-    axios.get("http://localhost:8081/appointments/patients")
-      .then(res => setPatients(res.data))
-      .catch(() => setPatients([]));
+  const [clientSecret, setClientSecret] = useState("");
 
-    axios.get("http://localhost:8081/appointments/doctors")
-      .then(res => setDoctors(res.data))
+useEffect(() => {
+  if (activeStep === 3 && form.patientId && form.doctorId && form.appointmentDate) {
+    axios
+      .post("http://localhost:8081/api/payment/create-payment-intent", {
+        patientId: form.patientId,
+        doctorId: form.doctorId,
+        appointmentDate: form.appointmentDate,
+      })
+      .then((res) => {
+         console.log("Payment intent response:", res.data);
+        setClientSecret(res.data.clientSecret);
+      })
+       
+  }
+}, [activeStep]);
+
+  // Load patients and doctors on mount
+  useEffect(() => {
+    axios
+      .get("http://localhost:8081/appointments/patients")
+      .then((res) => setPatients(res.data))
+      .catch(() => setPatients([]));
+    axios
+      .get("http://localhost:8081/appointments/doctors")
+      .then((res) => setDoctors(res.data))
       .catch(() => setDoctors([]));
   }, []);
 
   // Load appointments when doctor changes
   useEffect(() => {
     if (form.doctorId) {
-      axios.get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
-        .then(res => setAppointments(res.data))
+      axios
+        .get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
+        .then((res) => setAppointments(res.data))
         .catch(() => setAppointments([]));
-      setForm(f => ({ ...f, appointmentDate: "" }));
+      setForm((f) => ({ ...f, appointmentDate: "" }));
     } else {
       setAppointments([]);
-      setForm(f => ({ ...f, appointmentDate: "" }));
+      setForm((f) => ({ ...f, appointmentDate: "" }));
     }
   }, [form.doctorId]);
 
-  // Step navigation
   const handleNext = () => {
     if (activeStep === 0 && (!form.patientId || !form.doctorId)) {
       alert("Select both patient and doctor.");
       return;
     }
-
     if (activeStep === 1 && !form.notificationVerified) {
       alert("Please verify the details.");
       return;
     }
-
     if (activeStep === 2 && !form.appointmentDate) {
       alert("Please select an appointment slot.");
       return;
     }
-
     if (activeStep === 3 && !form.paymentInfo.trim()) {
-      alert("Enter payment details.");
-      return;
+      // We'll skip paymentInfo check since we do Stripe payment
+      // But if you want, you can keep it here
     }
-
-    setActiveStep(prev => prev + 1);
+    setActiveStep((prev) => prev + 1);
   };
 
-  const handleBack = () => setActiveStep(prev => prev - 1);
+  const handleBack = () => setActiveStep((prev) => prev - 1);
 
-  const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSelectSlot = (dateTimeStr) => {
     setForm({ ...form, appointmentDate: dateTimeStr });
@@ -88,14 +112,36 @@ function AppointmentBooking({organization}) {
       const body = {
         patientId: parseInt(form.patientId),
         doctorId: parseInt(form.doctorId),
-        appointmentDate: form.appointmentDate
+        appointmentDate: form.appointmentDate,
       };
-
       await axios.post("http://localhost:8081/appointments/book", body);
       alert("Appointment booked successfully!");
-      setActiveStep(activeStep + 1);
+      setActiveStep((prev) => prev + 1);
+
+      // Refresh appointments to show the new booking
+      axios
+        .get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
+        .then((res) => setAppointments(res.data))
+        .catch(() => setAppointments([]));
     } catch (err) {
       setMessage(err.message || "Booking failed.");
+    }
+  };
+
+  const handleCancelAppointment = async (appointmentId) => {
+    if (!window.confirm("Are you sure you want to cancel this appointment?")) {
+      return;
+    }
+    try {
+      await axios.delete(`http://localhost:8081/appointments/${appointmentId}`);
+      alert("Appointment cancelled.");
+      // Refresh appointments after cancellation
+      axios
+        .get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
+        .then((res) => setAppointments(res.data))
+        .catch(() => setAppointments([]));
+    } catch (err) {
+      alert("Failed to cancel appointment.");
     }
   };
 
@@ -112,7 +158,7 @@ function AppointmentBooking({organization}) {
   };
 
   const isSlotBooked = (day, hour) => {
-    return appointments.find(app => {
+    return appointments.find((app) => {
       const appDate = new Date(app.appointmentDate);
       return (
         appDate.getFullYear() === day.getFullYear() &&
@@ -142,18 +188,26 @@ function AppointmentBooking({organization}) {
     switch (step) {
       case 0:
         return (
-          <div className='form-stack'>
-            <select name="patientId" value={form.patientId} onChange={handleChange}>
+          <div className="form-stack">
+            <select
+              name="patientId"
+              value={form.patientId}
+              onChange={handleChange}
+            >
               <option value="">Select Patient</option>
-              {patients.map(p => (
+              {patients.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.firstName} {p.lastName} (ID: {p.id})
                 </option>
               ))}
             </select>
-            <select name="doctorId" value={form.doctorId} onChange={handleChange}>
+            <select
+              name="doctorId"
+              value={form.doctorId}
+              onChange={handleChange}
+            >
               <option value="">Select Doctor</option>
-              {doctors.map(d => (
+              {doctors.map((d) => (
                 <option key={d.id} value={d.id}>
                   Dr. {d.firstName} {d.lastName} - {d.specialization}
                 </option>
@@ -161,112 +215,205 @@ function AppointmentBooking({organization}) {
             </select>
           </div>
         );
-
       case 1:
         return (
           <div>
             <p>Confirm patient and doctor details:</p>
             <ul>
-              <li>Patient id: {form.patientId}</li>
-              <li>Doctor id: {form.doctorId}</li>
+              <li>
+                Patient:{" "}
+                {patients.find((p) => p.id === parseInt(form.patientId))
+                  ? `${patients.find((p) => p.id === parseInt(form.patientId))
+                      .firstName} ${patients.find(
+                      (p) => p.id === parseInt(form.patientId)
+                    ).lastName} (ID: ${form.patientId})`
+                  : "N/A"}
+              </li>
+              <li>
+                Doctor:{" "}
+                {doctors.find((d) => d.id === parseInt(form.doctorId))
+                  ? `Dr. ${doctors.find((d) => d.id === parseInt(form.doctorId))
+                      .firstName} ${doctors.find(
+                      (d) => d.id === parseInt(form.doctorId)
+                    ).lastName} - ${
+                      doctors.find((d) => d.id === parseInt(form.doctorId))
+                        .specialization
+                    }`
+                  : "N/A"}
+              </li>
             </ul>
             <label>
               <input
                 type="checkbox"
                 checked={form.notificationVerified}
-                onChange={e => setForm({ ...form, notificationVerified: e.target.checked })}
-              /> I verify the details are correct.
+                onChange={(e) =>
+                  setForm({ ...form, notificationVerified: e.target.checked })
+                }
+              />{" "}
+              I verify the details are correct.
             </label>
           </div>
         );
-
       case 2:
         return (
           <div className="calendar-time-grid">
-            <div className="grid-row header-row">
-              <div className="time-cell"></div>
-              {days.map(day => (
-                <div key={day.toISOString()} className={`day-cell header-cell ${isWeekend(day) ? 'weekend' : ''}`}>
-                  <div>{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
-                  <div>{day.getDate()}</div>
+              <div className="grid-row header-row">
+                <div className="time-cell"></div>
+                {days.map((day) => (
+                  <div
+                    key={day.toISOString()}
+                    className={`day-cell header-cell ${
+                      isWeekend(day) ? "weekend" : ""
+                    }`}
+                  >
+                    <div>
+                      {day.toLocaleDateString(undefined, { weekday: "short" })}
+                    </div>
+                    <div>{day.getDate()}</div>
+                  </div>
+                ))}
+              </div>
+
+              {hours.map((hour) => (
+                <div key={hour} className="grid-row">
+                  <div className="time-cell">{formatHour(hour)}</div>
+                  {days.map((day) => {
+                    const dateTimeStr = `${day.toISOString().slice(0, 10)}T${hour
+                      .toString()
+                      .padStart(2, "0")}:00`;
+                    const isSelected = form.appointmentDate.startsWith(dateTimeStr);
+                    if (isWeekend(day)) {
+                      return (
+                        <div
+                          key={day + hour}
+                          className="time-slot-cell weekend"
+                        >
+                          -
+                        </div>
+                      );
+                    }
+                    const booked = isSlotBooked(day, hour);
+                    return (
+                      <div
+                        key={day + hour}
+                        className={`time-slot-cell ${
+                          booked ? "booked" : "available"
+                        } ${isSelected ? "selected" : ""}`}
+                        onClick={() => !booked && handleSelectSlot(dateTimeStr)}
+                        title={
+                          booked
+                            ? `Booked (Patient ID: ${booked.patientId})`
+                            : "Available"
+                        }
+                      >
+                        {booked ? (
+                          // Show cancel button if appointment belongs to the selected patient
+                          booked.patientId === parseInt(form.patientId) ? (
+                            <>
+                              Booked  
+                              <button
+                                className="cancel-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelAppointment(booked.id);
+                                }}
+                                title="Cancel this appointment"
+                              >
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            "Booked"
+                          )
+                        ) : (
+                          ""
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
-
-            {hours.map(hour => (
-              <div key={hour} className="grid-row">
-                <div className="time-cell">{formatHour(hour)}</div>
-                {days.map(day => {
-                  const dateTimeStr = `${day.toISOString().slice(0, 10)}T${hour.toString().padStart(2, '0')}:00`;
-                  const isSelected = form.appointmentDate.startsWith(dateTimeStr);
-                  if (isWeekend(day)) {
-                    return <div key={day + hour} className="time-slot-cell weekend">-</div>;
-                  }
-                  const booked = isSlotBooked(day, hour);
-                  return (
-                    <div
-                      key={day + hour}
-                      className={`time-slot-cell ${booked ? 'booked' : 'available'} ${isSelected ? 'selected' : ''}`}
-                      onClick={() => !booked && handleSelectSlot(dateTimeStr)}
-                      title={booked ? `Booked (Patient ID: ${booked.patientId})` : "Available"}
-                    >
-                      {booked ? "Booked" : ""}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        );
-
+          );
       case 3:
         return (
           <div>
-            {/* <p>Enter dummy payment information (for now):</p> */}
-            <input
-              type="text"
-              name="paymentInfo"
-              placeholder="Card Number"
-              value={form.paymentInfo}
-              onChange={handleChange}
-            />
-            {/* <p style={{ fontSize: '0.9em', color: 'gray' }}>Replace this with a real payment gateway later.</p> */}
-          </div>
+      {clientSecret ? (
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <PaymentForm
+            amount={1499} // pass amount PKR
+            form={form}
+            setForm={setForm}
+            onPaymentSuccess={() => {
+              // Move to next step or whatever you want on payment success
+              setActiveStep((prev) => prev + 1);
+            }}
+          />
+        </Elements>
+      ) : (
+        <div>Loading payment details...</div>
+      )}
+    </div>
         );
-
+        
       case 4:
         return (
           <div>
-            {/* <h3>Confirm your appointment:</h3> */}
-            <p>Appointment: {new Date(form.appointmentDate).toLocaleString()}</p>
-            <p>Patient ID: {form.patientId}</p>
-            <p>Doctor ID: {form.doctorId}</p>            
-            <p>Payment Info: {form.paymentInfo}</p>
+            <h3>Confirm & Book Appointment</h3>
+            <p>
+              <strong>Appointment Date & Time:</strong>{" "}
+              {new Date(form.appointmentDate).toLocaleString()}
+            </p>
+            <p>
+              <strong>Patient ID:</strong> {form.patientId}
+            </p>
+            <p>
+              <strong>Doctor ID:</strong> {form.doctorId}
+            </p>
             <Button variant="contained" color="primary" onClick={handleBookAppointment}>
               Confirm & Book
             </Button>
-            {message && <p style={{ color: 'red' }}>{message}</p>}
+            {message && <p style={{ color: "red" }}>{message}</p>}
           </div>
         );
-
+      case 5:
+        return (
+          <div>
+            alert("your appointment has been successfully booked.");
+            <h3>Booking Completed!</h3>
+            <p>Your appointment has been successfully booked.</p>
+          </div>
+        );
       default:
         return "Unknown step";
     }
   };
+
+  // Listen to URL query param for Stripe success or cancel to auto-advance step
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("success")) {
+      // payment success, move to confirm booking step
+
+      setActiveStep(4);
+    } else if (query.get("canceled")) {
+      alert("Payment canceled.");
+    }
+  }, []);
 
   return (
     <div className="appointment-container">
       <h2>Book Appointment</h2>
       <p>{organization}</p>
       <Stepper activeStep={activeStep} alternativeLabel>
-        {steps.map(label => (
+        {steps.map((label) => (
           <Step key={label}>
             <StepLabel>{label}</StepLabel>
           </Step>
         ))}
       </Stepper>
 
-      <div style={{ marginTop: 30 }}>
+        <div style={{ marginTop: 30 }}>
         {activeStep === steps.length ? (
           <div>
             <h3>Appointment booked successfully!</h3>
@@ -276,25 +423,28 @@ function AppointmentBooking({organization}) {
           </div>
         ) : (
           <>
-            {renderStepContent(activeStep)}
-            <div style={{ marginTop: 30 }}>
-              {activeStep > 0 && (
-                <Button onClick={handleBack} style={{ marginRight: 10 }}>
-                  Back
-                </Button>
-              )}
-              {activeStep < steps.length - 1 && (
-                <Button variant="contained" color="primary" onClick={handleNext}>
-                  Next
-                </Button>
-              )}
-            </div>
-          </>
+          {renderStepContent(activeStep)}
+
+      <div style={{ marginTop: 20 }}>
+        {activeStep > 0  && (
+          <Button onClick={handleBack} style={{ marginRight: 8 }}>
+            Back
+          </Button>
+        )}
+        {activeStep < 3 && (
+          <Button variant="contained" color="primary" onClick={handleNext}>
+            Next
+          </Button>
         )}
       </div>
+      </>
+        )}  
+        </div>
     </div>
   );
 }
 
 export default AppointmentBooking;
+
+
 
