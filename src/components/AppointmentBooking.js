@@ -4,10 +4,10 @@ import { Stepper, Step, StepLabel, Button } from "@mui/material";
 import "./AppointmentBooking.css";
 
 import PaymentForm from "./PaymentForm";
-import {
-  Elements,
-} from "@stripe/react-stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
+
+import { logAppointmentBooking } from "../FirebaseAnalytics"; 
 
 const stripePromise = loadStripe("pk_test_51S2syLCjoVPMv76imBAFsz0OdoFOnVbP2JUSV09aW1wmV3LFTJk2KIx2dgcyS6Xf4lbTMIrhwA4JMxb27Hso3InF00ODFhBAWL");
 
@@ -19,7 +19,7 @@ const steps = [
   "Checkout",
 ];
 
-function AppointmentBooking({ organization}) {
+function AppointmentBooking({ organization }) {
   const [activeStep, setActiveStep] = useState(0);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -32,33 +32,38 @@ function AppointmentBooking({ organization}) {
     paymentInfo: "",
   });
   const [message, setMessage] = useState("");
-
   const [clientSecret, setClientSecret] = useState("");
 
-useEffect(() => {
-  if (activeStep === 3 && form.patientId && form.doctorId && form.appointmentDate) {
-    axios
-      .post("http://localhost:8081/api/payment/create-payment-intent", {
-        patientId: form.patientId,
-        doctorId: form.doctorId,
-        appointmentDate: form.appointmentDate,
-      })
-      .then((res) => {
-         console.log("Payment intent response:", res.data);
-        setClientSecret(res.data.clientSecret);
-      })
-       
-  }
-}, [activeStep]);
+  useEffect(() => {
+    if (activeStep === 3 && form.patientId && form.doctorId && form.appointmentDate) {
+      axios
+        .post("http://3.26.144.86:8080/hsmi-context-path/api/payment/create-payment-intent", {
+          patientId: form.patientId,
+          doctorId: form.doctorId,
+          appointmentDate: form.appointmentDate,
+        })
+        .then((res) => {
+          console.log("Payment intent response:", res.data);
+          setClientSecret(res.data.clientSecret);
+        });
+    }
+  }, [activeStep]);
 
   // Load patients and doctors on mount
   useEffect(() => {
     axios
-      .get("http://localhost:8081/appointments/patients")
-      .then((res) => setPatients(res.data))
-      .catch(() => setPatients([]));
+      .get("http://3.26.144.86:8080/hsmi-context-path/patients")
+      .then((res) => {
+        console.log("Response data:", res.data);
+        setPatients(res.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching patients:", error);
+        setPatients([]);
+      });
+
     axios
-      .get("http://localhost:8081/appointments/doctors")
+      .get("http://3.26.144.86:8080/hsmi-context-path/doctors")
       .then((res) => setDoctors(res.data))
       .catch(() => setDoctors([]));
   }, []);
@@ -67,7 +72,7 @@ useEffect(() => {
   useEffect(() => {
     if (form.doctorId) {
       axios
-        .get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
+        .get(`http://3.26.144.86:8080/hsmi-context-path/appointments/doctor/${form.doctorId}`)
         .then((res) => setAppointments(res.data))
         .catch(() => setAppointments([]));
       setForm((f) => ({ ...f, appointmentDate: "" }));
@@ -90,17 +95,12 @@ useEffect(() => {
       alert("Please select an appointment slot.");
       return;
     }
-    if (activeStep === 3 && !form.paymentInfo.trim()) {
-      // We'll skip paymentInfo check since we do Stripe payment
-      // But if you want, you can keep it here
-    }
     setActiveStep((prev) => prev + 1);
   };
 
   const handleBack = () => setActiveStep((prev) => prev - 1);
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSelectSlot = (dateTimeStr) => {
     setForm({ ...form, appointmentDate: dateTimeStr });
@@ -114,15 +114,24 @@ useEffect(() => {
         doctorId: parseInt(form.doctorId),
         appointmentDate: form.appointmentDate,
       };
-      await axios.post("http://localhost:8081/appointments/book", body);
+      await axios.post("http://3.26.144.86:8080/hsmi-context-path/appointments/book", body);
       alert("Appointment booked successfully!");
       setActiveStep((prev) => prev + 1);
 
       // Refresh appointments to show the new booking
       axios
-        .get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
+        .get(`http://3.26.144.86:8080/hsmi-context-path/appointments/doctor/${form.doctorId}`)
         .then((res) => setAppointments(res.data))
         .catch(() => setAppointments([]));
+
+      // --- Analytics Logging here ---
+      const patient = patients.find((p) => p.id === body.patientId);
+      const doctor = doctors.find((d) => d.id === body.doctorId);
+
+      const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient";
+      const doctorName = doctor ? `Dr. ${doctor.firstName} ${doctor.lastName}` : "Unknown Doctor";
+
+      logAppointmentBooking(patientName, doctorName, form.appointmentDate);
     } catch (err) {
       setMessage(err.message || "Booking failed.");
     }
@@ -133,11 +142,11 @@ useEffect(() => {
       return;
     }
     try {
-      await axios.delete(`http://localhost:8081/appointments/${appointmentId}`);
+      await axios.delete(`http://3.26.144.86:8080/hsmi-context-path/appointments/${appointmentId}`);
       alert("Appointment cancelled.");
       // Refresh appointments after cancellation
       axios
-        .get(`http://localhost:8081/appointments/doctor/${form.doctorId}`)
+        .get(`http://3.26.144.86:8080/hsmi-context-path/appointments/doctor/${form.doctorId}`)
         .then((res) => setAppointments(res.data))
         .catch(() => setAppointments([]));
     } catch (err) {
@@ -189,11 +198,7 @@ useEffect(() => {
       case 0:
         return (
           <div className="form-stack">
-            <select
-              name="patientId"
-              value={form.patientId}
-              onChange={handleChange}
-            >
+            <select name="patientId" value={form.patientId} onChange={handleChange}>
               <option value="">Select Patient</option>
               {patients.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -201,11 +206,7 @@ useEffect(() => {
                 </option>
               ))}
             </select>
-            <select
-              name="doctorId"
-              value={form.doctorId}
-              onChange={handleChange}
-            >
+            <select name="doctorId" value={form.doctorId} onChange={handleChange}>
               <option value="">Select Doctor</option>
               {doctors.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -223,22 +224,13 @@ useEffect(() => {
               <li>
                 Patient:{" "}
                 {patients.find((p) => p.id === parseInt(form.patientId))
-                  ? `${patients.find((p) => p.id === parseInt(form.patientId))
-                      .firstName} ${patients.find(
-                      (p) => p.id === parseInt(form.patientId)
-                    ).lastName} (ID: ${form.patientId})`
+                  ? `${patients.find((p) => p.id === parseInt(form.patientId)).firstName} ${patients.find((p) => p.id === parseInt(form.patientId)).lastName} (ID: ${form.patientId})`
                   : "N/A"}
               </li>
               <li>
                 Doctor:{" "}
                 {doctors.find((d) => d.id === parseInt(form.doctorId))
-                  ? `Dr. ${doctors.find((d) => d.id === parseInt(form.doctorId))
-                      .firstName} ${doctors.find(
-                      (d) => d.id === parseInt(form.doctorId)
-                    ).lastName} - ${
-                      doctors.find((d) => d.id === parseInt(form.doctorId))
-                        .specialization
-                    }`
+                  ? `Dr. ${doctors.find((d) => d.id === parseInt(form.doctorId)).firstName} ${doctors.find((d) => d.id === parseInt(form.doctorId)).lastName} - ${doctors.find((d) => d.id === parseInt(form.doctorId)).specialization}`
                   : "N/A"}
               </li>
             </ul>
@@ -246,9 +238,7 @@ useEffect(() => {
               <input
                 type="checkbox"
                 checked={form.notificationVerified}
-                onChange={(e) =>
-                  setForm({ ...form, notificationVerified: e.target.checked })
-                }
+                onChange={(e) => setForm({ ...form, notificationVerified: e.target.checked })}
               />{" "}
               I verify the details are correct.
             </label>
@@ -257,112 +247,92 @@ useEffect(() => {
       case 2:
         return (
           <div className="calendar-time-grid">
-              <div className="grid-row header-row">
-                <div className="time-cell"></div>
-                {days.map((day) => (
-                  <div
-                    key={day.toISOString()}
-                    className={`day-cell header-cell ${
-                      isWeekend(day) ? "weekend" : ""
-                    }`}
-                  >
-                    <div>
-                      {day.toLocaleDateString(undefined, { weekday: "short" })}
-                    </div>
-                    <div>{day.getDate()}</div>
-                  </div>
-                ))}
-              </div>
-
-              {hours.map((hour) => (
-                <div key={hour} className="grid-row">
-                  <div className="time-cell">{formatHour(hour)}</div>
-                  {days.map((day) => {
-                    const dateTimeStr = `${day.toISOString().slice(0, 10)}T${hour
-                      .toString()
-                      .padStart(2, "0")}:00`;
-                    const isSelected = form.appointmentDate.startsWith(dateTimeStr);
-                    if (isWeekend(day)) {
-                      return (
-                        <div
-                          key={day + hour}
-                          className="time-slot-cell weekend"
-                        >
-                          -
-                        </div>
-                      );
-                    }
-                    const booked = isSlotBooked(day, hour);
-                    return (
-                      <div
-                        key={day + hour}
-                        className={`time-slot-cell ${
-                          booked ? "booked" : "available"
-                        } ${isSelected ? "selected" : ""}`}
-                        onClick={() => !booked && handleSelectSlot(dateTimeStr)}
-                        title={
-                          booked
-                            ? `Booked (Patient ID: ${booked.patientId})`
-                            : "Available"
-                        }
-                      >
-                        {booked ? (
-                          // Show cancel button if appointment belongs to the selected patient
-                          booked.patientId === parseInt(form.patientId) ? (
-                            <>
-                              Booked  
-                              <button
-                                className="cancel-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCancelAppointment(booked.id);
-                                }}
-                                title="Cancel this appointment"
-                              >
-                                ✕
-                              </button>
-                            </>
-                          ) : (
-                            "Booked"
-                          )
-                        ) : (
-                          ""
-                        )}
-                      </div>
-                    );
-                  })}
+            <div className="grid-row header-row">
+              <div className="time-cell"></div>
+              {days.map((day) => (
+                <div key={day.toISOString()} className={`day-cell header-cell ${isWeekend(day) ? "weekend" : ""}`}>
+                  <div>{day.toLocaleDateString(undefined, { weekday: "short" })}</div>
+                  <div>{day.getDate()}</div>
                 </div>
               ))}
             </div>
-          );
+
+            {hours.map((hour) => (
+              <div key={hour} className="grid-row">
+                <div className="time-cell">{formatHour(hour)}</div>
+                {days.map((day) => {
+                  const dateTimeStr = `${day.toISOString().slice(0, 10)}T${hour.toString().padStart(2, "0")}:00`;
+                  const isSelected = form.appointmentDate.startsWith(dateTimeStr);
+                  if (isWeekend(day)) {
+                    return (
+                      <div key={day + hour} className="time-slot-cell weekend">
+                        -
+                      </div>
+                    );
+                  }
+                  const booked = isSlotBooked(day, hour);
+                  return (
+                    <div
+                      key={day + hour}
+                      className={`time-slot-cell ${booked ? "booked" : "available"} ${isSelected ? "selected" : ""}`}
+                      onClick={() => !booked && handleSelectSlot(dateTimeStr)}
+                      title={booked ? `Booked (Patient ID: ${booked.patientId})` : "Available"}
+                    >
+                      {booked ? (
+                        booked.patientId === parseInt(form.patientId) ? (
+                          <>
+                            Booked{" "}
+                            <button
+                              className="cancel-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCancelAppointment(booked.id);
+                              }}
+                              title="Cancel this appointment"
+                            >
+                              ✕
+                            </button>
+                          </>
+                        ) : (
+                          "Booked"
+                        )
+                      ) : (
+                        ""
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        );
       case 3:
         return (
           <div>
-      {clientSecret ? (
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <PaymentForm
-            amount={1499} // pass amount PKR
-            form={form}
-            setForm={setForm}
-            onPaymentSuccess={() => {
-              // Move to next step or whatever you want on payment success
-              setActiveStep((prev) => prev + 1);
-            }}
-          />
-        </Elements>
-      ) : (
-        <div>Loading payment details...</div>
-      )}
-    </div>
+            {clientSecret ? (
+              <Elements stripe={stripePromise} options={{ clientSecret }}>
+                <PaymentForm
+                  amount={1499} // pass amount PKR
+                  form={form}
+                  setForm={setForm}
+                  onPaymentSuccess={() => {
+                    // Move to next step or whatever you want on payment success
+                    setActiveStep((prev) => prev + 1);
+                  }}
+                />
+              </Elements>
+            ) : (
+              <div>Loading payment details...</div>
+            )}
+          </div>
         );
-        
+
       case 4:
         return (
           <div>
             <h3>Confirm & Book Appointment</h3>
             <p>
-              <strong>Appointment Date & Time:</strong>{" "}
-              {new Date(form.appointmentDate).toLocaleString()}
+              <strong>Appointment Date & Time:</strong> {new Date(form.appointmentDate).toLocaleString()}
             </p>
             <p>
               <strong>Patient ID:</strong> {form.patientId}
@@ -379,7 +349,6 @@ useEffect(() => {
       case 5:
         return (
           <div>
-            alert("your appointment has been successfully booked.");
             <h3>Booking Completed!</h3>
             <p>Your appointment has been successfully booked.</p>
           </div>
@@ -393,8 +362,6 @@ useEffect(() => {
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     if (query.get("success")) {
-      // payment success, move to confirm booking step
-
       setActiveStep(4);
     } else if (query.get("canceled")) {
       alert("Payment canceled.");
@@ -413,7 +380,7 @@ useEffect(() => {
         ))}
       </Stepper>
 
-        <div style={{ marginTop: 30 }}>
+      <div style={{ marginTop: 30 }}>
         {activeStep === steps.length ? (
           <div>
             <h3>Appointment booked successfully!</h3>
@@ -423,28 +390,25 @@ useEffect(() => {
           </div>
         ) : (
           <>
-          {renderStepContent(activeStep)}
+            {renderStepContent(activeStep)}
 
-      <div style={{ marginTop: 20 }}>
-        {activeStep > 0  && (
-          <Button onClick={handleBack} style={{ marginRight: 8 }}>
-            Back
-          </Button>
-        )}
-        {activeStep < 3 && (
-          <Button variant="contained" color="primary" onClick={handleNext}>
-            Next
-          </Button>
+            <div style={{ marginTop: 20 }}>
+              {activeStep > 0 && (
+                <Button onClick={handleBack} style={{ marginRight: 8 }}>
+                  Back
+                </Button>
+              )}
+              {activeStep < 3 && (
+                <Button variant="contained" color="primary" onClick={handleNext}>
+                  Next
+                </Button>
+              )}
+            </div>
+          </>
         )}
       </div>
-      </>
-        )}  
-        </div>
     </div>
   );
 }
 
 export default AppointmentBooking;
-
-
-

@@ -1,5 +1,6 @@
 import axios from "axios";
-import { useState, useEffect } from "react"; 
+import { useState, useEffect } from "react";
+import { logPatientRegistration } from "../FirebaseAnalytics"; // Import the analytics logger
 
 function PatientRegister({ organization }) {
   const [form, setForm] = useState({
@@ -132,7 +133,7 @@ function PatientRegister({ organization }) {
       return;
     }
     try {
-      await axios.post("http://localhost:8081/otp/send-otp", {
+      await axios.post("http://3.26.144.86:8080/hsmi-context-path/otp/send-otp", {
         email: form.email,
       });
       setOtpSent(true);
@@ -149,7 +150,7 @@ function PatientRegister({ organization }) {
       return;
     }
     try {
-      await axios.post("http://localhost:8081/otp/verify-otp", {
+      await axios.post("http://3.26.144.86:8080/hsmi-context-path/otp/verify-otp", {
         email: form.email,
         otp,
       });
@@ -177,10 +178,11 @@ function PatientRegister({ organization }) {
     if (!form.email) newErrors.email = "Email is required";
     else if (!isValidEmail(form.email))
       newErrors.email = "Invalid email format";
-    else if (!otpVerified) {
-      alert("Please verify your email first.");
-      return;
-    }
+    // Uncomment below to require email verification before submit
+    // else if (!otpVerified) {
+    //   alert("Please verify your email first.");
+    //   return;
+    // }
 
     if (!form.address) newErrors.address = "Address is required";
 
@@ -203,8 +205,18 @@ function PatientRegister({ organization }) {
     }
 
     try {
-      await axios.post("http://localhost:8081/patients/register", form);
+      await axios.post(
+        "http://3.26.144.86:8080/hsmi-context-path/patients/register",
+        form
+      );
       alert("Patient Registered successfully!");
+
+      // Log the event to Firebase Analytics here
+      const fullName = `${form.firstName} ${form.lastName}`;
+      console.log("Logging patient registration event for:", fullName);
+      logPatientRegistration(fullName);
+
+      // Reset form and states
       setForm({
         firstName: "",
         lastName: "",
@@ -256,7 +268,10 @@ function PatientRegister({ organization }) {
         ) : (
           <>
             <div className="form-stack">
-              {[{ name: "firstName", placeholder: "First Name", type: "text" }, { name: "lastName", placeholder: "Last Name", type: "text" }].map((field) => (
+              {[
+                { name: "firstName", placeholder: "First Name", type: "text" },
+                { name: "lastName", placeholder: "Last Name", type: "text" },
+              ].map((field) => (
                 <div className="form-group" key={field.name}>
                   <input
                     type={field.type}
@@ -294,9 +309,7 @@ function PatientRegister({ organization }) {
                     </button>
                   )}
                   {otpVerified && (
-                    <p
-                      style={{ position: "absolute", right: 10, top: -3 }}
-                    >
+                    <p style={{ position: "absolute", right: 10, top: -3 }}>
                       ✅
                     </p>
                   )}
