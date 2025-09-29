@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useState, useEffect } from "react";
 import { logPatientRegistration } from "../FirebaseAnalytics"; // Import the analytics logger
+import { backend_api_url } from "../config";
 
 function PatientRegister({ organization }) {
   const [form, setForm] = useState({
@@ -133,7 +134,7 @@ function PatientRegister({ organization }) {
       return;
     }
     try {
-      await axios.post("http://3.26.144.86:8080/hsmi-context-path/otp/send-otp", {
+      await axios.post(`${backend_api_url}/otp/send-otp`, {
         email: form.email,
       });
       setOtpSent(true);
@@ -150,7 +151,7 @@ function PatientRegister({ organization }) {
       return;
     }
     try {
-      await axios.post("http://3.26.144.86:8080/hsmi-context-path/otp/verify-otp", {
+      await axios.post(`${backend_api_url}/otp/verify-otp`, {
         email: form.email,
         otp,
       });
@@ -178,11 +179,11 @@ function PatientRegister({ organization }) {
     if (!form.email) newErrors.email = "Email is required";
     else if (!isValidEmail(form.email))
       newErrors.email = "Invalid email format";
-    // Uncomment below to require email verification before submit
-    // else if (!otpVerified) {
-    //   alert("Please verify your email first.");
-    //   return;
-    // }
+    
+    else if (!otpVerified) {
+      alert("Please verify your email first.");
+      return;
+    }
 
     if (!form.address) newErrors.address = "Address is required";
 
@@ -206,7 +207,7 @@ function PatientRegister({ organization }) {
 
     try {
       await axios.post(
-        "http://3.26.144.86:8080/hsmi-context-path/patients/register",
+        `${backend_api_url}/patients/register`,
         form
       );
       alert("Patient Registered successfully!");

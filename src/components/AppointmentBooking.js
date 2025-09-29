@@ -2,6 +2,7 @@ import axios from "axios";
 import { useState, useEffect } from "react";
 import { Stepper, Step, StepLabel, Button } from "@mui/material";
 import "./AppointmentBooking.css";
+import { backend_api_url } from "../config";
 
 import PaymentForm from "./PaymentForm";
 import { Elements } from "@stripe/react-stripe-js";
@@ -37,7 +38,7 @@ function AppointmentBooking({ organization }) {
   useEffect(() => {
     if (activeStep === 3 && form.patientId && form.doctorId && form.appointmentDate) {
       axios
-        .post("http://3.26.144.86:8080/hsmi-context-path/api/payment/create-payment-intent", {
+        .post(`${backend_api_url}/api/payment/create-payment-intent`, {
           patientId: form.patientId,
           doctorId: form.doctorId,
           appointmentDate: form.appointmentDate,
@@ -52,7 +53,7 @@ function AppointmentBooking({ organization }) {
   // Load patients and doctors on mount
   useEffect(() => {
     axios
-      .get("http://3.26.144.86:8080/hsmi-context-path/patients")
+      .get(`${backend_api_url}/patients`)
       .then((res) => {
         console.log("Response data:", res.data);
         setPatients(res.data);
@@ -63,7 +64,7 @@ function AppointmentBooking({ organization }) {
       });
 
     axios
-      .get("http://3.26.144.86:8080/hsmi-context-path/doctors")
+      .get(`${backend_api_url}/doctors`)
       .then((res) => setDoctors(res.data))
       .catch(() => setDoctors([]));
   }, []);
@@ -72,7 +73,7 @@ function AppointmentBooking({ organization }) {
   useEffect(() => {
     if (form.doctorId) {
       axios
-        .get(`http://3.26.144.86:8080/hsmi-context-path/appointments/doctor/${form.doctorId}`)
+        .get(`${backend_api_url}/appointments/doctor/${form.doctorId}`)
         .then((res) => setAppointments(res.data))
         .catch(() => setAppointments([]));
       setForm((f) => ({ ...f, appointmentDate: "" }));
@@ -114,13 +115,13 @@ function AppointmentBooking({ organization }) {
         doctorId: parseInt(form.doctorId),
         appointmentDate: form.appointmentDate,
       };
-      await axios.post("http://3.26.144.86:8080/hsmi-context-path/appointments/book", body);
+      await axios.post(`${backend_api_url}/appointments/book`, body);
       alert("Appointment booked successfully!");
       setActiveStep((prev) => prev + 1);
 
       // Refresh appointments to show the new booking
       axios
-        .get(`http://3.26.144.86:8080/hsmi-context-path/appointments/doctor/${form.doctorId}`)
+        .get(`${backend_api_url}/appointments/doctor/${form.doctorId}`)
         .then((res) => setAppointments(res.data))
         .catch(() => setAppointments([]));
 
@@ -142,11 +143,11 @@ function AppointmentBooking({ organization }) {
       return;
     }
     try {
-      await axios.delete(`http://3.26.144.86:8080/hsmi-context-path/appointments/${appointmentId}`);
+      await axios.delete(`${backend_api_url}/appointments/${appointmentId}`);
       alert("Appointment cancelled.");
       // Refresh appointments after cancellation
       axios
-        .get(`http://3.26.144.86:8080/hsmi-context-path/appointments/doctor/${form.doctorId}`)
+        .get(`${backend_api_url}/appointments/doctor/${form.doctorId}`)
         .then((res) => setAppointments(res.data))
         .catch(() => setAppointments([]));
     } catch (err) {
